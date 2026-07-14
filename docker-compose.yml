@@ -7,8 +7,10 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+    environment:
+      - DOCKER_API_VERSION=1.40 # 👈 บังคับเวอร์ชัน API ของ Docker Client ตรงนี้
     ports:
-      - "80:80" # เปิดให้ cloudflared จากข้างนอกวิ่งเข้ามาพอร์ตนี้
+      - "80:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
