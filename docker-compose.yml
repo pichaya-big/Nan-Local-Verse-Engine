@@ -1,27 +1,57 @@
 services:
+  # --- 1. TRAEFIK (Reverse Proxy ตัวกลาง) ---
+  traefik:
+    image: traefik:v3.0
+    container_name: nan-verse-traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80" # เปิดให้ cloudflared จากข้างนอกวิ่งเข้ามาพอร์ตนี้
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - web-network
+    restart: always
+
+  # --- 2. BACKEND SERVER ---
   server:
     build:
       context: ./server
       dockerfile: Dockerfile
     container_name: nan-verse-server
-    ports:
-      - "8000:8000"
     env_file:
       - ./server/.env
+    networks:
+      - web-network
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.server.rule=Host(`api.pichaya.dev`)"
+      - "traefik.http.services.server.loadbalancer.server.port=8000"
 
+  # --- 3. FRONTEND CLIENT ---
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
     container_name: nan-verse-client
-    ports:
-      - "3000:3000"
     env_file:
       - ./client/.env.local
     environment:
       - PORT=3000
       - FASTAPI_URL=http://server:8000
+    networks:
+      - web-network
     restart: always
     depends_on:
       - server
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.client.rule=Host(`nanlocalverse.pichaya.dev`)"
+      - "traefik.http.services.client.loadbalancer.server.port=3000"
+
+networks:
+  web-network:
+    name: nan-verse-net
