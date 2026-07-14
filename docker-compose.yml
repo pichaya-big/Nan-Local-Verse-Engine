@@ -1,7 +1,7 @@
 services:
   # --- 1. TRAEFIK (Reverse Proxy ตัวกลาง) ---
   traefik:
-    image: traefik:v3.0
+    image: traefik:v2.11
     container_name: nan-verse-traefik
     command:
       - "--providers.docker=true"
