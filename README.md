@@ -31,7 +31,7 @@
          └── (Direct Integration) ──> [ Database: Supabase (PostgreSQL) ]
                                              (Shops, Campaigns, Quests Tables)
 
-                                             1. **Frontend (`/client`):** พัฒนาด้วย Next.js (App Router) ร่วมกับ Tailwind CSS และ Lucide Icons มีระบบ Dynamic Theme (Dark/Light mode) ที่สวยงาม พร้อม CSS Keyframes สำหรับงาน Animation ที่สะท้อนจิตวิญญาณธรรมชาติของน่าน (สายหมอกลอยเอื่อยและฝูงนกกระยางขาว)
+1. **Frontend (`/client`):** พัฒนาด้วย Next.js (App Router) ร่วมกับ Tailwind CSS และ Lucide Icons มีระบบ Dynamic Theme (Dark/Light mode) ที่สวยงาม พร้อม CSS Keyframes สำหรับงาน Animation ที่สะท้อนจิตวิญญาณธรรมชาติของน่าน (สายหมอกลอยเอื่อยและฝูงนกกระยางขาว)
 2. **Backend Engine (`/server`):** พัฒนาด้วย FastAPI โครงสร้างแบบ Modular Design ที่รองรับการขยายตัว ควบคุมการวิเคราะห์ข้อมูล Brief เพื่อส่งต่อไปยัง Generative AI ในการคิด Campaign รูปแบบต่างๆ
 3. **Database Setup:** ใช้งาน Supabase (PostgreSQL) ในการเก็บข้อมูลโครงสร้างร้านค้า (`stores`), แคมเปญจาก AI (`campaigns`) และระบบเควสล่ารางวัล (`quests`)
 
