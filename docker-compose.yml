@@ -1,0 +1,27 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: nan-verse-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./server/.env
+    restart: always
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: nan-verse-client
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./client/.env.local
+    environment:
+      - PORT=3000
+      - FASTAPI_URL=http://server:8000
+    restart: always
+    depends_on:
+      - server
