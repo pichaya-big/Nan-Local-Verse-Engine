@@ -21,6 +21,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Create client .env.local file
+        run: |
+          cat << 'EOF' > ./client/.env.local
+          ${{ secrets.ENV_CLIENT }}
+          EOF
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -82,6 +88,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Create client .env.local file
+        run: |
+          cat << 'EOF' > ./client/.env.local
+          ${{ secrets.ENV_CLIENT }}
+          EOF
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -169,6 +181,16 @@ jobs:
             
             # Pull latest changes from the repository (e.g. docker-compose config updates)
             git pull || true
+            
+            # Create client .env.local file on VPS
+            cat << 'EOF' > client/.env.local
+            ${{ secrets.ENV_CLIENT }}
+            EOF
+            
+            # Create server .env file on VPS
+            cat << 'EOF' > server/.env
+            ${{ secrets.ENV_SERVER }}
+            EOF
             
             # Pull the newly built Docker images from GHCR
             docker compose pull
