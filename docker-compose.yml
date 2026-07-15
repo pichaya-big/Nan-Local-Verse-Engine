@@ -1,24 +1,22 @@
 services:
-  # --- 1. TRAEFIK (Reverse Proxy ตัวกลาง) ---
-  traefik:
-    image: traefik:v2.11
-    container_name: nan-verse-traefik
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-    environment:
-      - DOCKER_API_VERSION=1.40 # 👈 บังคับเวอร์ชัน API ของ Docker Client ตรงนี้
+  # --- 1. NGINX (Reverse Proxy) ---
+  nginx:
+    image: nginx:alpine
+    container_name: nan-verse-nginx
     ports:
       - "80:80"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - web-network
     restart: always
+    depends_on:
+      - server
+      - client
 
   # --- 2. BACKEND SERVER ---
   server:
+    image: ghcr.io/pichaya-big/nan-local-verse-engine-server:latest
     build:
       context: ./server
       dockerfile: Dockerfile
@@ -28,13 +26,10 @@ services:
     networks:
       - web-network
     restart: always
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.server.rule=Host(`api.pichaya.dev`)"
-      - "traefik.http.services.server.loadbalancer.server.port=8000"
 
   # --- 3. FRONTEND CLIENT ---
   client:
+    image: ghcr.io/pichaya-big/nan-local-verse-engine-client:latest
     build:
       context: ./client
       dockerfile: Dockerfile
@@ -49,10 +44,6 @@ services:
     restart: always
     depends_on:
       - server
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.client.rule=Host(`nanlocalverse.pichaya.dev`)"
-      - "traefik.http.services.client.loadbalancer.server.port=3000"
 
 networks:
   web-network:
