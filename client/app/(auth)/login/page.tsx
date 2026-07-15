@@ -19,51 +19,21 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            // 1. ลงชื่อเข้าใช้ด้วย Email และ Password
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            // โหมดเดโม: ข้ามขั้นตอนการยืนยันตัวตนกับ Supabase เซ็ตคุกกี้จำลองขึ้นมาโดยอิงตาม Role ที่เลือก
+            await new Promise((resolve) => setTimeout(resolve, 600)); // หน่วงเวลาให้ดูสมจริง
 
-            if (error) {
-                alert(error.message || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
-                setLoading(false);
-                return;
-            }
+            // เซ็ต Cookie 'auth_token' เพื่อให้ผ่านการตรวจสอบของ Middleware
+            document.cookie = `auth_token=demo_${role}_token; path=/; max-age=86400`;
 
-            if (!data.user) {
-                alert("ไม่พบข้อมูลผู้ใช้");
-                setLoading(false);
-                return;
-            }
-
-            // 2. ดึงข้อมูล Profile เพื่อตรวจดูบทบาท (Role) ในระบบจริง
-            const { data: profile, error: profileError } = await supabase
-                .from("users")
-                .select("role")
-                .eq("id", data.user.id)
-                .single();
-
-            if (profileError || !profile) {
-                alert("ไม่พบข้อมูลโปรไฟล์ผู้ใช้งานในระบบ");
-                setLoading(false);
-                return;
-            }
-
-            // 3. เซ็ต Cookie 'auth_token' เพื่อให้ผ่านการตรวจสอบของ Middleware
-            if (data.session) {
-                document.cookie = `auth_token=${data.session.access_token}; path=/; max-age=${data.session.expires_in}`;
-            }
-
-            // 4. นำทางผู้ใช้ไปยังหน้าเพจที่ตรงตาม Role จริงในฐานข้อมูล
-            if (profile.role === "operator") {
+            // นำทางผู้ใช้ไปยังหน้าเพจที่ตรงตาม Role
+            if (role === "operator") {
                 router.push("/dashboard");
             } else {
                 router.push("/quests");
             }
         } catch (error) {
             console.error("Login error:", error);
-            alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ");
+            alert("เกิดข้อผิดพลาดในการเข้าสู่ระบบโหมดสาธิต");
         } finally {
             setLoading(false);
         }
@@ -97,6 +67,11 @@ export default function LoginPage() {
 
                 {/* กล่องล็อกอินหลัก โทนสว่างคลีนๆ มีมิติ */}
                 <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-3xl p-6 shadow-xl shadow-slate-200/50 space-y-5">
+
+                    {/* 💡 คำแนะนำโหมดสาธิต (Demo Mode Notice) */}
+                    <div className="p-3.5 bg-amber-50/80 border border-amber-200/70 rounded-2xl text-amber-800 text-[11px] leading-relaxed shadow-sm">
+                        <span className="font-bold">💡 โหมดสาธิต (Demo Mode):</span> ไม่จำเป็นต้องสมัครสมาชิกหรือกรอกข้อมูลจริง สามารถเลือกบทบาทที่ต้องการแล้วกดปุ่ม <span className="font-bold">"เข้าสู่ระบบระบบผจญภัยน่าน"</span> ด้านล่างได้ทันทีเลยจ้าว!
+                    </div>
 
                     {/* 🎛️ TAB SWITCHER: สลับบทบาทผู้ใช้งาน */}
                     <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-255">
@@ -178,12 +153,11 @@ export default function LoginPage() {
                             <div className="relative">
                                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input
-                                    type="email"
+                                    type="text"
                                     placeholder="your-email@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
-                                    required
                                 />
                             </div>
                         </div>
@@ -198,7 +172,6 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
-                                    required
                                 />
                                 <button
                                     type="button"
