@@ -16,6 +16,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Disable Next.js telemetry during build
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder-project.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=placeholder-anon-key
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
