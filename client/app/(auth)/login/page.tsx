@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Store, Compass, Lock, User, ArrowRight, Sparkles, MessageCircle, Globe, Eye, EyeOff } from "lucide-react";
+import { Store, Compass, Lock, User, ArrowRight, Sparkles, MessageCircle, Globe, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 
 export default function LoginPage() {
@@ -45,6 +45,15 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen bg-slate-50/70 flex flex-col items-center justify-center p-4 relative overflow-hidden transition-colors">
+
+            {/* 🏠 ปุ่มย้อนกลับหน้าแรก (Back to Home) */}
+            <button
+                onClick={() => router.push("/")}
+                className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white border border-slate-200/80 hover:border-slate-350 text-slate-650 hover:text-slate-900 rounded-full text-xs font-bold shadow-sm hover:shadow-md transition-all active:scale-95 z-20"
+            >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                กลับหน้าหลัก
+            </button>
 
             {/* 🌌 แสงออร่าหลังฉากแบบซอฟท์ๆ เพิ่มความน่าตื่นเต้น */}
             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-emerald-200/40 rounded-full blur-3xl pointer-events-none transition-all" />

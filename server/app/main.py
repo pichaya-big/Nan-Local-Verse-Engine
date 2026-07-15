@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.endpoints import campaign # เปลี่ยนตาม path โครงสร้างจริง
+from app.api.v1.endpoints import campaign, weather
 
 
 def create_app() -> FastAPI:
@@ -27,6 +27,7 @@ def create_app() -> FastAPI:
 
     # รวม Router (ถ้ามีหลายตัว สามารถเพิ่มที่นี่ได้เลย)
     app.include_router(campaign.router)
+    app.include_router(weather.router)
 
     @app.get("/", tags=["Health Check"])
     def health_check():

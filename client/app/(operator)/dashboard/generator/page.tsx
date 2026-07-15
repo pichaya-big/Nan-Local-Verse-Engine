@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Copy, Check, Share2, ArrowLeft, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Sparkles, Copy, Check, Share2, ArrowLeft, Image as ImageIcon, Loader2, Smartphone, Coins } from 'lucide-react';
 import { supabase } from '../../../../lib/supabaseClient';
 
 const normalizeDistrict = (dist: string | null | undefined): string => {
@@ -31,6 +31,11 @@ export default function GeneratorPage() {
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [isQuestPublished, setIsQuestPublished] = useState(false);
   const [publishingQuest, setPublishingQuest] = useState(false);
+
+  // States สำหรับ Tone และกลุ่มเป้าหมาย (Wow Features)
+  const [tone, setTone] = useState("ร่วมสมัยล้านนาโมเดิร์น");
+  const [targetAudience, setTargetAudience] = useState("นักท่องเที่ยวทั่วไป");
+  const [showLivePreview, setShowLivePreview] = useState(false);
 
   // State สำหรับเก็บข้อมูลที่ได้จาก FastAPI
   const [campaignData, setCampaignData] = useState<{
@@ -96,7 +101,10 @@ export default function GeneratorPage() {
         body: JSON.stringify({
           business_type: businessType,
           season: season + (keyword ? ` เน้น: ${keyword}` : ''),
-          store_id: storeId // ส่ง storeId ไปบันทึกในตาราง campaigns ของระบบจริง
+          store_id: storeId, // ส่ง storeId ไปบันทึกในตาราง campaigns ของระบบจริง
+          tone: tone,
+          target_audience: targetAudience,
+          district: storeDistrict
         }),
       });
 
@@ -247,6 +255,35 @@ export default function GeneratorPage() {
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">กลุ่มเป้าหมายหลัก</label>
+            <select
+              value={targetAudience}
+              onChange={(e) => setTargetAudience(e.target.value)}
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border outline-none focus:border-emerald-500 transition-all text-sm"
+            >
+              <option value="นักท่องเที่ยวทั่วไป">🎒 นักท่องเที่ยวทั่วไป</option>
+              <option value="นักท่องเที่ยวสายกรีน ตะลุยธรรมชาติ">🌳 นักท่องเที่ยวสายกรีน ตะลุยธรรมชาติ</option>
+              <option value="กลุ่มครอบครัวและผู้สูงอายุ">👨‍👩‍👧‍👦 กลุ่มครอบครัวและผู้สูงอายุ</option>
+              <option value="วัยรุ่นเน้นถ่ายรูปเช็กอิน คาเฟ่ฮอปปิ้ง">📸 วัยรุ่นเน้นถ่ายรูปเช็กอิน คาเฟ่ฮอปปิ้ง</option>
+              <option value="Digital Nomad คนทำงานทางไกล">💻 Digital Nomad คนทำงานทางไกล</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">น้ำเสียงแคมเปญ (Tone)</label>
+            <select
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border outline-none focus:border-emerald-500 transition-all text-sm"
+            >
+              <option value="ร่วมสมัยล้านนาโมเดิร์น">✨ ร่วมสมัยล้านนาโมเดิร์น</option>
+              <option value="สุภาพ อบอุ่นคำเมือง">🌸 สุภาพ อบอุ่นคำเมือง (จ้าว/เน้อ)</option>
+              <option value="โมเดิร์นคูล ชิคๆ">😎 โมเดิร์นคูล ชิคๆ เก๋ๆ</option>
+              <option value="ขี้เล่น วัยรุ่นกระตือรือร้น">🔥 ขี้เล่น วัยรุ่นกระตือรือร้น</option>
+            </select>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading}
@@ -255,7 +292,7 @@ export default function GeneratorPage() {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin" size={18} />
-                AI กำลังคำนวณสถิติและรังสรรค์ไอเดีย...
+                AI กำลังเสกแคมเปญ...
               </>
             ) : (
               <>
@@ -266,7 +303,7 @@ export default function GeneratorPage() {
           </button>
         </form>
 
-        {/* ฝั่งขวา: ผลลัพธ์จาก AI Workspace (7 Columns) */}
+        {/* ฝั่งขวา: พื้นที่ทำงานของ AI Workspace (7 Columns) */}
         <div className="lg:col-span-7 space-y-6">
 
           {!campaignData && !isLoading && (
@@ -274,8 +311,8 @@ export default function GeneratorPage() {
               <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
                 <Sparkles size={28} />
               </div>
-              <h3 className="text-xl font-bold mb-1">AI วางแผนการตลาดพร้อมทำงาน</h3>
-              <p className="text-sm text-muted-text max-w-sm">กรอกบรีฟธุรกิจของชุมชนฝั่งซ้าย เพื่อให้ระบบดึงสถิติท่องเที่ยวมาเสกแคมเปญกระตุ้นยอดขายทันที</p>
+              <h3 className="text-xl font-bold mb-1">AI รอเสกแคมเปญประจำฤดูกาลของร้านคุณ</h3>
+              <p className="text-sm text-muted-text max-w-sm">ป้อนข้อมูลบรีฟด้านซ้าย จากนั้นกดปุ่ม "เสกแคมเปญการตลาดด้วย AI" เพื่อเริ่มต้นสร้างสรรค์กิจกรรมล้านนาพรีเมียม</p>
             </div>
           )}
 
@@ -283,8 +320,8 @@ export default function GeneratorPage() {
             <div className="bg-card border border-card-border rounded-2xl p-12 text-center flex flex-col items-center justify-center min-h-[400px] text-card-foreground space-y-4">
               <Loader2 className="animate-spin text-emerald-600 dark:text-emerald-400" size={40} />
               <div className="space-y-1">
-                <h3 className="text-lg font-bold">กำลังวิเคราะห์ข้อมูล...</h3>
-                <p className="text-sm text-muted-text max-w-xs mx-auto">AI กำลังประมวลผลคำเมือง ค้นหาดีไซน์ภาพแคมเปญ และออกแบบระบบ Quest ให้เข้ากับชุมชนน่าน</p>
+                <h3 className="text-lg font-bold">กำลังใช้ AI ประมวลผลแคมเปญล้านนา...</h3>
+                <p className="text-sm text-muted-text max-w-xs mx-auto">AI กำลังคิดข้อความโซเชียล กิจกรรมเควส และ Prompt ภาพโฆษณาระดับพรีเมียมให้สอดคล้องกับร้านของคุณ</p>
               </div>
             </div>
           )}
@@ -292,78 +329,219 @@ export default function GeneratorPage() {
           {campaignData && !isLoading && (
             <div className="space-y-6 animate-fadeIn text-card-foreground">
 
-              {/* Card 1: ชื่อแคมเปญ & แคปชั่นคำเมือง */}
-              <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm space-y-4 relative">
-                <div className="flex justify-between items-start border-b border-card-border pb-3">
-                  <div>
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-                      แคมเปญโซเชียลแนะนำ
-                    </span>
-                    <h3 className="text-xl font-bold mt-2">{campaignData.campaign_title}</h3>
+              {/* แถบสวิตช์ระหว่างข้อมูลดิบของแคมเปญ vs พรีวิวมือถือนักท่องเที่ยว */}
+              <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border dark:border-slate-800 text-xs w-full">
+                <button
+                  type="button"
+                  onClick={() => setShowLivePreview(false)}
+                  className={`flex-1 py-2 rounded-lg font-black transition-all flex items-center justify-center gap-1.5 ${
+                    !showLivePreview
+                      ? 'bg-white dark:bg-slate-800 shadow text-emerald-600 dark:text-emerald-450'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Sparkles size={14} />
+                  รายละเอียดแคมเปญ AI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLivePreview(true)}
+                  className={`flex-1 py-2 rounded-lg font-black transition-all flex items-center justify-center gap-1.5 ${
+                    showLivePreview
+                      ? 'bg-white dark:bg-slate-800 shadow text-emerald-600 dark:text-emerald-450'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Smartphone size={14} />
+                  พรีวิวบนมือถือนักท่องเที่ยว 📱
+                </button>
+              </div>
+
+              {!showLivePreview ? (
+                <>
+                  {/* Card 1: ชื่อแคมเปญ & แคปชั่นคำเมือง */}
+                  <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm space-y-4 relative">
+                    <div className="flex justify-between items-start border-b border-card-border pb-3">
+                      <div>
+                        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                          แคมเปญโซเชียลแนะนำ
+                        </span>
+                        <h3 className="text-xl font-bold mt-2">{campaignData.campaign_title}</h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(campaignData.caption, 'caption')}
+                        className="p-2 rounded-xl border border-card-border hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-text flex items-center gap-1 text-xs"
+                        title="คัดลอกแคปชั่น"
+                      >
+                        {copiedText === 'caption' ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+                        {copiedText === 'caption' ? 'คัดลอกแล้ว' : 'คัดลอก'}
+                      </button>
+                    </div>
+                    <p className="text-sm whitespace-pre-line leading-relaxed bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-card-border italic text-slate-700 dark:text-slate-350">
+                      "{campaignData.caption}"
+                    </p>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(campaignData.caption, 'caption')}
-                    className="p-2 rounded-xl border border-card-border hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-text flex items-center gap-1 text-xs"
-                    title="คัดลอกแคปชั่น"
-                  >
-                    {copiedText === 'caption' ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                    {copiedText === 'caption' ? 'คัดลอกแล้ว' : 'คัดลอก'}
-                  </button>
-                </div>
-                <p className="text-sm whitespace-pre-line leading-relaxed bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-card-border italic text-slate-700 dark:text-slate-300">
-                  "{campaignData.caption}"
-                </p>
-              </div>
 
-              {/* Card 2: ภารกิจเพื่อสิ่งแวดล้อมหรือการกระจายรายได้ (Gamification Quest) */}
-              <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm space-y-3">
-                <h4 className="font-bold text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                  🎮 โมดูลกิจกรรมชุมชน (Gamification Quest)
-                </h4>
-                <p className="text-sm leading-relaxed">{campaignData.gamification_quest}</p>
-                <div className="pt-2">
-                  <button 
-                    onClick={handlePublishQuest}
-                    disabled={isQuestPublished || publishingQuest}
-                    className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-450 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/40 hover:scale-[1.02] active:scale-95 disabled:scale-100 transition-all disabled:opacity-60"
-                  >
-                    {publishingQuest ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Share2 size={14} />
-                    )}
-                    {isQuestPublished 
-                      ? "ส่งเควสนี้ให้ผู้เล่นสำเร็จแล้วจ้าว" 
-                      : publishingQuest 
-                        ? "กำลังส่งเข้าบอร์ดท่องเที่ยว..." 
-                        : "ส่งกิจกรรมนี้เข้าสู่ App นักท่องเที่ยวท้องถิ่น"}
-                  </button>
-                </div>
-              </div>
+                  {/* Card 2: ภารกิจเพื่อสิ่งแวดล้อมหรือการกระจายรายได้ (Gamification Quest) */}
+                  <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm space-y-3">
+                    <h4 className="font-bold text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      🎮 โมดูลกิจกรรมชุมชน (Gamification Quest)
+                    </h4>
+                    <p className="text-sm leading-relaxed">{campaignData.gamification_quest}</p>
+                    <div className="pt-2">
+                      <button 
+                        type="button"
+                        onClick={handlePublishQuest}
+                        disabled={isQuestPublished || publishingQuest}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-450 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/40 hover:scale-[1.02] active:scale-95 disabled:scale-100 transition-all disabled:opacity-60"
+                      >
+                        {publishingQuest ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Share2 size={14} />
+                        )}
+                        {isQuestPublished 
+                          ? "ส่งเควสนี้ให้ผู้เล่นสำเร็จแล้วจ้าว" 
+                          : publishingQuest 
+                            ? "กำลังส่งเข้าบอร์ดท่องเที่ยว..." 
+                            : "ส่งกิจกรรมนี้เข้าสู่ App นักท่องเที่ยวท้องถิ่น"}
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Card 3: AI Image Prompt Generator */}
-              <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-bold text-sm flex items-center gap-1.5">
-                    <ImageIcon size={16} className="text-sky-500" /> โครงสร้าง Prompt สำหรับสร้างรูปภาพประกอบ
-                  </h4>
-                  <button
-                    onClick={() => copyToClipboard(campaignData.image_prompt, 'prompt')}
-                    className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                  >
-                    {copiedText === 'prompt' ? 'คัดลอกสำเร็จ!' : 'คัดลอก Prompt'}
-                  </button>
-                </div>
+                  {/* Card 3: ภาพแคมเปญ */}
+                  <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-bold text-sm flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
+                        <ImageIcon size={16} className="text-emerald-600 dark:text-emerald-450" /> ภาพแคมเปญแนะนำ
+                      </h4>
+                    </div>
 
-                {/* จำลองพรีวิวกล่องใส่รูปภาพ */}
-                <div className="w-full h-44 rounded-xl border-2 border-dashed border-card-border flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900/20 text-center p-4">
-                  <ImageIcon size={32} className="text-slate-300 mb-2" />
-                  <p className="text-xs text-slate-400 max-w-sm font-mono bg-card p-2 rounded border border-card-border break-all">
-                    {campaignData.image_prompt}
-                  </p>
-                  <p className="text-[10px] text-muted-text mt-2">คัดลอกข้อความด้านบนไปใส่ในเครื่องมือ AI Gen ภาพ (เช่น Midjourney/DALL-E) เพื่อรับรูปภาพโฆษณาระดับพรีเมียม</p>
+                    {/* แสดงรูปภาพแคมเปญ */}
+                    <div className="relative w-full overflow-hidden rounded-xl border border-card-border bg-slate-100 dark:bg-slate-900/20">
+                      <img
+                        src="/CAMP.jpg"
+                        alt="ภาพแคมเปญ"
+                        className="w-full h-auto object-cover max-h-[350px] rounded-xl hover:scale-[1.01] transition-transform duration-300"
+                      />
+                    </div>
+
+                    {/* โครงสร้าง Prompt */}
+                    <div className="space-y-2 pt-3 border-t border-card-border">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-muted-text font-medium font-bold">โครงสร้าง Prompt สำหรับสร้างรูปภาพ:</span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(campaignData.image_prompt, 'prompt')}
+                          className="text-emerald-600 dark:text-emerald-450 hover:underline flex items-center gap-1 font-semibold"
+                        >
+                          {copiedText === 'prompt' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                          {copiedText === 'prompt' ? 'คัดลอกสำเร็จ!' : 'คัดลอก Prompt'}
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-lg border border-card-border break-all">
+                        {campaignData.image_prompt}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* 📱 พรีวิวบนหน้าจอมือถือจำลองฝั่งนักท่องเที่ยว */
+                <div className="flex justify-center py-4 animate-scale-up">
+                  {/* iPhone Container */}
+                  <div className="relative w-[320px] h-[600px] bg-slate-950 rounded-[45px] p-3 shadow-2xl border-4 border-slate-800 ring-8 ring-slate-900/30 overflow-hidden flex flex-col justify-between">
+                    
+                    {/* Dynamic Island */}
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-20 flex items-center justify-between px-3 text-[9px] text-white">
+                      <span className="text-emerald-450 font-black font-mono">10:45 AM</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                    </div>
+
+                    {/* Status Bar */}
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 px-4 pt-4 pb-2 font-mono">
+                      <span>📶 5G</span>
+                      <div className="flex items-center gap-1">
+                        <span>🔋 98%</span>
+                      </div>
+                    </div>
+
+                    {/* App Inside Mobile */}
+                    <div className="flex-1 rounded-[32px] bg-slate-900 overflow-y-auto text-white p-3.5 space-y-4 no-scrollbar">
+                      
+                      {/* App Header */}
+                      <div className="flex justify-between items-center border-b border-slate-850 pb-2">
+                        <div>
+                          <span className="text-[9px] uppercase tracking-widest text-emerald-455 font-extrabold font-mono">Nan Local Verse</span>
+                          <h4 className="text-xs font-black flex items-center gap-1">
+                            📍 อำเภอ {storeDistrict}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] bg-slate-850 px-2 py-0.5 rounded-full border border-slate-800 text-slate-350">
+                          {season.includes("ฝน") ? "🌧️ Rainy (24°C)" : "☀️ Sunny (32°C)"}
+                        </span>
+                      </div>
+
+                      {/* เควสของร้านค้าเราที่ถูกเพิ่มเข้ามาใหม่ */}
+                      <div className="bg-slate-950 border border-slate-850 rounded-2xl overflow-hidden flex flex-col space-y-3.5 p-3.5 shadow-lg">
+                        
+                        {/* รูปภาพแคมเปญ */}
+                        <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-900">
+                          <img
+                            src="/CAMP.jpg"
+                            alt="Campaign Poster"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-2 left-2 bg-emerald-600/90 text-white font-mono font-bold text-[9px] px-2 py-0.5 rounded">
+                            🏆 ภารกิจแนะนำ
+                          </div>
+                        </div>
+
+                        {/* ข้อมูลแคมเปญ */}
+                        <div className="space-y-1.5">
+                          <h5 className="font-bold text-xs leading-snug text-emerald-450">{campaignData.campaign_title}</h5>
+                          <p className="text-[10px] text-slate-400 leading-relaxed italic line-clamp-3">
+                            &ldquo;{campaignData.caption}&rdquo;
+                          </p>
+                        </div>
+
+                        {/* กล่องเกณฑ์รางวัล */}
+                        <div className="bg-emerald-950/20 border border-emerald-900/30 p-2.5 rounded-xl flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-[8px] text-emerald-400 font-bold block">รางวัลเมื่อเสร็จสิ้น</span>
+                            <p className="text-[10px] text-slate-300 leading-snug">{campaignData.gamification_quest}</p>
+                          </div>
+                          <span className="text-xs font-black text-amber-400 font-mono flex items-center gap-0.5 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/25">
+                            +150
+                          </span>
+                        </div>
+
+                        {/* ปุ่มเช็กอิน */}
+                        <button className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-[10px] rounded-lg shadow transition-all active:scale-95">
+                          📸 สแกน QR และวิเคราะห์หลักฐาน
+                        </button>
+                      </div>
+
+                      {/* ลำดับกิจกรรมอื่นๆ ของอำเภอ */}
+                      <div className="space-y-2">
+                        <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">เควสชุมชนอื่นๆ ในพื้นที่</span>
+                        <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-850 flex items-center justify-between text-[10px] opacity-40">
+                          <span>🚲 ปั่นจักรยานชมวิวนาข้าว อ.{storeDistrict}</span>
+                          <span className="font-mono">+100</span>
+                        </div>
+                        <div className="bg-slate-950/50 p-2.5 rounded-xl border border-slate-850 flex items-center justify-between text-[10px] opacity-40">
+                          <span>🍲 ทานขันโตกโบราณพื้นเมืองปัว</span>
+                          <span className="font-mono">+120</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Bottom Bar Indicator */}
+                    <div className="w-28 h-1 bg-white/40 rounded-full mx-auto my-1.5" />
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
           )}

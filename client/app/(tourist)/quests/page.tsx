@@ -18,7 +18,10 @@ import {
   BookOpen,
   Store,
   Sparkles,
-  Zap
+  Zap,
+  TreePine,
+  UtensilsCrossed,
+  Gift
 } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -79,6 +82,46 @@ const LEVEL_THRESHOLDS: LevelThreshold[] = [
   }
 ];
 
+// รายการของรางวัลสำหรับระบบสิทธิประโยชน์ NAN Coins
+const REWARDS = [
+  {
+    id: "cocoa",
+    title: "โกโก้น่านร้อนออร์แกนิก 1 แก้ว",
+    description: "จิบโกโก้แท้เข้มข้น ผลผลิตจากไร่เกษตรกรอำเภอปัว ฟรี 1 แก้ว ณ ร้านค้าพันธมิตร",
+    cost: 200,
+    icon: "UtensilsCrossed",
+    color: "text-amber-600 bg-amber-50 dark:bg-amber-950/40",
+    badge: "🍵 ฟรีเครื่องดื่ม"
+  },
+  {
+    id: "homestay_discount",
+    title: "ส่วนลดโฮมสเตย์ในปัว/บ่อเกลือ 15%",
+    description: "ใช้ลดราคาค่าห้องพักหรือลานกางเต็นท์ริมน้ำ ในร้านพักผ่อนที่เข้าร่วมโครงการช่วงฤดูฝน",
+    cost: 450,
+    icon: "Store",
+    color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40",
+    badge: "🏷️ คูปองส่วนลด"
+  },
+  {
+    id: "handicraft",
+    title: "พวงกุญแจจักสานหรือกระเป๋าผ้าฝ้ายทำมือ",
+    description: "งานฝีมือทำด้วยรักจากผู้สูงอายุชุมชนบ่อเกลือ เสริมรายได้สู่กลุ่มแม่บ้านชุมชนย่อย",
+    cost: 350,
+    icon: "Gift",
+    color: "text-sky-600 bg-sky-50 dark:bg-sky-950/40",
+    badge: "🎁 ของที่ระลึก"
+  },
+  {
+    id: "tree_donation",
+    title: "บริจาคปลูกป่าต้นน้ำน่าน 1 ต้น",
+    description: "แปลงแต้มสะสมร่วมสนับสนุนการปลูกและฟื้นฟูป่าต้นน้ำน่าน โดยคุณจะได้รับใบบันทึกผู้พิทักษ์ป่าดิจิทัล",
+    cost: 100,
+    icon: "TreePine",
+    color: "text-green-600 bg-green-50 dark:bg-green-950/40",
+    badge: "🌱 ท่องเที่ยวสีเขียว"
+  }
+];
+
 const normalizeDistrict = (dist: string | null | undefined): string => {
   if (!dist) return "ปัว";
   const d = dist.trim().toLowerCase();
@@ -88,6 +131,10 @@ const normalizeDistrict = (dist: string | null | undefined): string => {
   if (d === "เชียงกลาง" || d === "chiang_klang" || d.includes("เชียง")) return "เชียงกลาง";
   if (d === "นาน้อย" || d === "na_noi" || d.includes("นาน้อย")) return "นาน้อย";
   return dist;
+};
+
+const generateVoucherCode = (rewardId: string): string => {
+  return `NAN-${rewardId.toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 };
 
 export default function AdvancedTouristQuestsPage() {
@@ -101,6 +148,19 @@ export default function AdvancedTouristQuestsPage() {
 
   // States สำหรับ UI
   const [simulatedWeather, setSimulatedWeather] = useState<"Rainy" | "Sunny">("Rainy");
+  const [weatherToast, setWeatherToast] = useState<string | null>(null);
+
+  const changeWeather = (weather: "Rainy" | "Sunny") => {
+    setSimulatedWeather(weather);
+    const msg = weather === "Rainy"
+      ? "🌧️ สภาพอากาศเปลี่ยนเป็นฝนตก: ระบบคัดกรองแนะนำเควสในร่มและร้านค้าหลบฝนจ้าว!"
+      : "☀️ สภาพอากาศเปลี่ยนเป็นแดดออก: ระบบคัดกรองแนะนำเควสผจญภัยกลางแจ้งและยอดดอยจ้าว!";
+    setWeatherToast(msg);
+    setTimeout(() => {
+      setWeatherToast((current) => current === msg ? null : current);
+    }, 3000);
+  };
+
   const [radarScanning, setRadarScanning] = useState(false);
   const [luckyResult, setLuckyResult] = useState("");
   const [isSpinning, setIsSpinning] = useState(false);
@@ -119,6 +179,19 @@ export default function AdvancedTouristQuestsPage() {
   // States สำหรับป็อปอัปแสดงการเฉลิมฉลอง Level Up 🎉
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [levelUpData, setLevelUpData] = useState<any>(null);
+
+  // States สำหรับ Coin Redemption Shop
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [selectedReward, setSelectedReward] = useState<any | null>(null);
+  const [voucherTimer, setVoucherTimer] = useState(900); // 15 mins
+  const [voucherCode, setVoucherCode] = useState("");
+  const [isRedeeming, setIsRedeeming] = useState(false);
+
+  // States สำหรับการจำลองกล้องสแกน QR
+  const [isScanningSimulated, setIsScanningSimulated] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState(false);
+  const [isVerifyingPhoto, setIsVerifyingPhoto] = useState(false);
+  const [verifyStep, setVerifyStep] = useState(0);
 
   // ดึงข้อมูลนักท่องเที่ยว เลเวล เหรียญ และเควสจาก Supabase
   const fetchTouristData = async () => {
@@ -163,8 +236,13 @@ export default function AdvancedTouristQuestsPage() {
         });
       }
 
+      let spent = 0;
+      if (typeof window !== "undefined") {
+        spent = Number(localStorage.getItem("demo_spent_coins") || "0");
+      }
+
       setCompletedQuestIds(completedIds);
-      setTotalCoins(coins);
+      setTotalCoins(Math.max(0, coins - spent));
 
       if (dbQuests && !questError) {
         setQuests(dbQuests);
@@ -210,6 +288,137 @@ export default function AdvancedTouristQuestsPage() {
       setLuckyResult(RANDOM_IDEAS[randomIndex]);
       setIsSpinning(false);
     }, 1000);
+  };
+
+  // Effect สำหรับคุมเวลานับถอยหลังตั๋วรางวัล
+  useEffect(() => {
+    let interval: any;
+    if (showRedeemModal && voucherTimer > 0) {
+      interval = setInterval(() => {
+        setVoucherTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (voucherTimer === 0) {
+      setShowRedeemModal(false);
+      alert("⚠️ คูปองของคุณหมดอายุแล้วเนื่องจากไม่มีการสแกนสิทธิ์ภายใน 15 นาที");
+    }
+    return () => clearInterval(interval);
+  }, [showRedeemModal, voucherTimer]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleRedeemClick = (reward: any) => {
+    if (totalCoins < reward.cost) return;
+    
+    // ตั้งค่ารหัสตั๋วสุ่มและเริ่มนับถอยหลังใหม่
+    const code = generateVoucherCode(reward.id);
+    setSelectedReward(reward);
+    setVoucherCode(code);
+    setVoucherTimer(900);
+    setShowRedeemModal(true);
+  };
+
+  const handleConfirmRedeem = async () => {
+    if (!selectedReward) return;
+    setIsRedeeming(true);
+
+    try {
+      // หักแต้มผ่าน localStorage
+      const currentSpent = Number(localStorage.getItem("demo_spent_coins") || "0");
+      const newSpent = currentSpent + selectedReward.cost;
+      localStorage.setItem("demo_spent_coins", String(newSpent));
+
+      // โหลดแต้มใหม่
+      await fetchTouristData();
+
+      alert(`🎉 แลกรางวัลสำเร็จแล้วจ้าว! ระบบได้ทำการยืนยันสิทธิ์และหักเหรียญรางวัลจำนวน ${selectedReward.cost} NAN เรียบร้อยแล้ว`);
+      setShowRedeemModal(false);
+      setSelectedReward(null);
+    } catch (e) {
+      console.error(e);
+      alert("เกิดข้อผิดพลาดในการแลกรางวัล");
+    } finally {
+      setIsRedeeming(false);
+    }
+  };
+
+  const startSimulatedScanner = (triggerCode: string) => {
+    setIsScanningSimulated(true);
+    setScanSuccess(false);
+    
+    // ตั้งเวลา 1.8 วินาทีสำหรับการจำลองการแสกนคิวอาร์โค้ด
+    setTimeout(() => {
+      setScanSuccess(true);
+      
+      // หลังจากสแกนเสร็จ 0.6 วินาที จะสลับไปจำลองการถ่ายภาพและตรวจโดย AI
+      setTimeout(() => {
+        setIsScanningSimulated(false);
+        setScanSuccess(false);
+        setIsVerifyingPhoto(true);
+        setVerifyStep(1);
+
+        // จำลอง Step 1 -> Step 2 (อัปโหลด -> ตรวจวัด)
+        setTimeout(() => {
+          setVerifyStep(2);
+          
+          // จำลอง Step 2 -> Step 3 (ตรวจวัด -> GPS)
+          setTimeout(() => {
+            setVerifyStep(3);
+
+            // จำลอง Step 3 -> ยิงลงฐานข้อมูลจริง
+            setTimeout(async () => {
+              setIsVerifyingPhoto(false);
+              setIsCheckingIn(true);
+              const oldCoins = totalCoins;
+              
+              try {
+                const { error } = await supabase
+                  .from("user_coupons")
+                  .insert({
+                    user_id: userId,
+                    quest_id: selectedQuest.id,
+                    status: "claimed"
+                  });
+
+                if (error) throw error;
+
+                alert(`🎉 สแกน QR & วิเคราะห์ภาพถ่ายสำเร็จ! ยินดีด้วยคุณได้รับ +${selectedQuest.points} NAN Coins`);
+                setShowQrModal(false);
+                setQrCodeInput("");
+                
+                await fetchTouristData();
+
+                const newCoins = oldCoins + selectedQuest.points;
+                const oldLevelDetails = getLevelInfo(oldCoins).current;
+                const newLevelDetails = getLevelInfo(newCoins).current;
+
+                if (newLevelDetails.level > oldLevelDetails.level) {
+                  setLevelUpData({
+                    oldLevel: oldLevelDetails.level,
+                    newLevel: newLevelDetails.level,
+                    title: newLevelDetails.title,
+                    badge: newLevelDetails.badge,
+                    perks: newLevelDetails.perks,
+                    description: newLevelDetails.description
+                  });
+                  setTimeout(() => {
+                    setShowLevelUpModal(true);
+                  }, 600);
+                }
+              } catch (err) {
+                console.error(err);
+                alert("เกิดข้อผิดพลาดในการบันทึกสแกน");
+              } finally {
+                setIsCheckingIn(false);
+              }
+            }, 800);
+          }, 800);
+        }, 800);
+      }, 600);
+    }, 1800);
   };
 
   // แยกบริบทสภาพอากาศจำลองตามความเหมาะสมของภารกิจ
@@ -319,10 +528,15 @@ export default function AdvancedTouristQuestsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 relative overflow-hidden">
+    <div className="w-full min-h-screen flex flex-col justify-between relative bg-slate-50 dark:bg-slate-950/20">
+      <div className="p-4 md:p-8 relative overflow-hidden flex-1">
       
-      {/* แสงออร่าด้านหลังแบบซอฟท์ๆ */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-100/30 rounded-full blur-3xl pointer-events-none dark:hidden" />
+      {/* แสงออร่าด้านหลังแบบซอฟท์ๆ ตามสภาพอากาศ */}
+      <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl pointer-events-none transition-all duration-1000 dark:hidden ${
+        simulatedWeather === "Rainy" 
+          ? "bg-blue-100/40" 
+          : "bg-amber-100/40"
+      }`} />
 
       <div className="max-w-4xl mx-auto space-y-6 relative z-10">
         
@@ -330,13 +544,13 @@ export default function AdvancedTouristQuestsPage() {
         <div className="flex justify-end gap-2 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-2 rounded-2xl w-fit ml-auto shadow-sm">
           <span className="text-xs flex items-center px-2 text-slate-500 dark:text-slate-400 font-medium">🌡️ สภาพอากาศจำลอง:</span>
           <button 
-            onClick={() => setSimulatedWeather("Rainy")}
+            onClick={() => changeWeather("Rainy")}
             className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all ${simulatedWeather === "Rainy" ? "bg-blue-600 text-white shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}
           >
             <CloudRain className="w-3.5 h-3.5" /> ฝนตก
           </button>
           <button 
-            onClick={() => setSimulatedWeather("Sunny")}
+            onClick={() => changeWeather("Sunny")}
             className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all ${simulatedWeather === "Sunny" ? "bg-amber-500 text-slate-950 shadow-sm" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}
           >
             <CloudSun className="w-3.5 h-3.5" /> แดดออก
@@ -409,9 +623,41 @@ export default function AdvancedTouristQuestsPage() {
               <p className="text-[11px] text-slate-500 dark:text-slate-400">ค้นหาพิกัดร้านค้าชุมชนรอบตัวคุณ</p>
             </div>
 
-            <div className="my-4 relative w-24 h-24 bg-slate-50 border border-slate-100 dark:bg-slate-950 dark:border-slate-800 rounded-full flex items-center justify-center overflow-hidden shadow-inner">
-              <div className={`absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-full ${radarScanning ? "animate-spin" : ""}`} />
-              <Compass className={`w-7 h-7 text-slate-400 transition-colors ${radarScanning ? "text-emerald-500" : "dark:text-emerald-400"}`} />
+            <div className="my-4 relative w-28 h-28 bg-slate-900 border-2 border-emerald-500/30 rounded-full flex items-center justify-center overflow-hidden shadow-[0_0_15px_rgba(16,185,129,0.15)] select-none shrink-0">
+              {/* Concentric Grid Rings */}
+              <div className="absolute w-20 h-20 border border-emerald-500/10 rounded-full pointer-events-none" />
+              <div className="absolute w-12 h-12 border border-emerald-500/15 rounded-full pointer-events-none" />
+              
+              {/* Crosshair Lines */}
+              <div className="absolute w-full h-[0.5px] bg-emerald-500/10 pointer-events-none" />
+              <div className="absolute h-full w-[0.5px] bg-emerald-500/10 pointer-events-none" />
+
+              {/* Sweeper (Rotating conic sector) */}
+              <div 
+                className={`absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,rgba(16,185,129,0.3)_0deg,rgba(16,185,129,0.05)_90deg,transparent_180deg)] rounded-full ${
+                  radarScanning ? "animate-spin [animation-duration:1.5s]" : "hidden"
+                }`}
+              />
+
+              {/* Pulsating Expanding Waves */}
+              {radarScanning && (
+                <>
+                  <div className="absolute inset-2 border border-emerald-400/35 rounded-full animate-ping [animation-duration:1.8s] pointer-events-none" />
+                  <div className="absolute inset-5 border border-emerald-500/20 rounded-full animate-ping [animation-duration:2.5s] [animation-delay:0.5s] pointer-events-none" />
+                  
+                  {/* Blips (Simulated Detected Points) */}
+                  <div className="absolute w-2 h-2 bg-emerald-400 rounded-full top-6 left-12 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)] [animation-delay:0.3s]" />
+                  <div className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full bottom-8 right-6 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)] [animation-delay:0.8s]" />
+                  <div className="absolute w-1.5 h-1.5 bg-emerald-400 rounded-full top-10 right-10 animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.8)] [animation-delay:1.2s]" />
+                </>
+              )}
+
+              {/* Center icon */}
+              <Compass 
+                className={`w-7 h-7 text-emerald-500/40 relative z-10 transition-all duration-300 ${
+                  radarScanning ? "text-emerald-450 scale-110 rotate-12" : "dark:text-emerald-500/30"
+                }`} 
+              />
             </div>
 
             <button 
@@ -482,6 +728,69 @@ export default function AdvancedTouristQuestsPage() {
                 ใช้ร่วมบริจาคโหวตเพื่อสนับสนุนแคมเปญจัดการดูแลขยะและการฟื้นฟูธรรมชาติป่าไม้เพื่อฟื้นฟูเมืองน่านให้เป็นเมืองท่องเที่ยวสีเขียว
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* 🎁 ร้านค้าแลกรางวัลสิทธิประโยชน์ (NAN Premium Redemptions) */}
+        <div className="bg-white border border-slate-200/80 dark:bg-slate-900 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-5">
+          <div className="flex justify-between items-center border-b dark:border-slate-850 pb-3">
+            <div className="space-y-1">
+              <h3 className="font-black text-base text-slate-800 dark:text-white flex items-center gap-2">
+                <Gift className="w-5 h-5 text-emerald-600 dark:text-emerald-450 animate-pulse" />
+                ร้านค้าแลกรางวัลสิทธิประโยชน์ (NAN Redemptions)
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">ใช้เหรียญสะสม NAN Coins ของคุณมาแลกของรางวัลหรือส่วนลดสไตล์น่านยั่งยืน</p>
+            </div>
+            <span className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-3 py-1 rounded-full border border-amber-550/20 flex items-center gap-1 font-mono">
+              <Coins className="w-3.5 h-3.5" />
+              มีอยู่: {totalCoins} NAN
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {REWARDS.map((reward) => {
+              const hasEnough = totalCoins >= reward.cost;
+              return (
+                <div
+                  key={reward.id}
+                  className="bg-slate-50 border border-slate-100 dark:bg-slate-950/40 dark:border-slate-850 p-4 rounded-2xl flex flex-col justify-between space-y-4 hover:shadow-md hover:border-emerald-500/10 transition-all text-card-foreground"
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${reward.color}`}>
+                        {reward.badge}
+                      </span>
+                      <span className="text-xs font-black font-mono text-amber-500">{reward.cost} Coins</span>
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">{reward.title}</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{reward.description}</p>
+                  </div>
+
+                  <div>
+                    <button
+                      onClick={() => handleRedeemClick(reward)}
+                      disabled={!hasEnough}
+                      className={`w-full py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 ${
+                        hasEnough
+                          ? "bg-gradient-to-r from-amber-450 to-amber-550 hover:from-amber-500 hover:to-amber-600 text-slate-950"
+                          : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed active:scale-100"
+                      }`}
+                    >
+                      {hasEnough ? (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          กดแลกรับสิทธิ์เลยจ้าว 🎉
+                        </>
+                      ) : (
+                        <>
+                          ต้องการเหรียญเพิ่มอีก {reward.cost - totalCoins} NAN 🔒
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -660,15 +969,34 @@ export default function AdvancedTouristQuestsPage() {
 
       {/* 📱 QR Code Check-in Simulation Modal */}
       {showQrModal && selectedQuest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in">
+          
+          {/* Keyframe สลักหมุนเลเซอร์ */}
+          <style>{`
+            @keyframes scan-laser {
+              0% { top: 0%; }
+              50% { top: 100%; }
+              100% { top: 0%; }
+            }
+            .laser-line {
+              position: absolute;
+              left: 0;
+              right: 0;
+              height: 2px;
+              background-color: #10b981;
+              box-shadow: 0 0 8px #10b981, 0 0 15px #10b981;
+              animation: scan-laser 2s infinite ease-in-out;
+            }
+          `}</style>
+
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-scale-up text-card-foreground">
             
             <div className="flex justify-between items-start border-b dark:border-slate-850 pb-3">
               <div className="space-y-1">
                 <span className="text-[9px] font-mono px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 rounded">
-                  เช็กอินรับรางวัล +{selectedQuest.points} NAN
+                  ภารกิจเช็กอิน +{selectedQuest.points} NAN Coins
                 </span>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white leading-tight">
+                <h3 className="font-bold text-base text-slate-900 dark:text-white leading-tight pt-1">
                   {selectedQuest.title}
                 </h3>
               </div>
@@ -676,6 +1004,9 @@ export default function AdvancedTouristQuestsPage() {
                 onClick={() => {
                   setShowQrModal(false);
                   setQrCodeInput("");
+                  setIsScanningSimulated(false);
+                  setScanSuccess(false);
+                  setIsVerifyingPhoto(false);
                 }}
                 className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
@@ -683,43 +1014,182 @@ export default function AdvancedTouristQuestsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleConfirmCheckin} className="space-y-4">
-              <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-950/40 border dark:border-slate-850/60 rounded-2xl relative overflow-hidden">
-                <QrCode className="w-28 h-28 text-slate-350 dark:text-emerald-600/50" />
-                <div className="absolute w-28 h-0.5 bg-emerald-500 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce [animation-duration:2s]" />
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3 italic text-center">
-                  สแกนคิวอาร์โค้ดที่ตั้งอยู่หน้าร้านเพื่อรับเหรียญรางวัล
+            {!isScanningSimulated && !isVerifyingPhoto && (
+              // โหมดที่ 1: แสดงคิวอาร์โค้ดจำลองที่หน้าร้านค้า
+              <div className="space-y-4">
+                <p className="text-xs text-slate-500 leading-relaxed text-center">
+                  ระบบได้สร้างป้าย **QR Code** สำหรับสแกนรับสิทธิ์ ณ หน้าร้านค้าพันธมิตรเรียบร้อยแล้ว
                 </p>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold">รหัสสแกน QR Code (สำหรับการสาธิต)</label>
-                <input 
-                  type="text" 
-                  value={qrCodeInput}
-                  onChange={(e) => setQrCodeInput(e.target.value)}
-                  placeholder="กรอกรหัส หรือ สแกน..."
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
-                  required
-                />
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 block font-mono bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg border border-amber-100/50 dark:border-amber-900/30">
-                  💡 คำใบ้สำหรับเดโมสแกน: รหัสของพิกัดนี้คือ <strong>{selectedQuest.qr_code_trigger}</strong>
-                </span>
-              </div>
+                {/* ป้าย QR หน้าร้านผู้ประกอบการ */}
+                <div className="bg-slate-50 dark:bg-slate-950/30 p-6 rounded-2xl border dark:border-slate-850 flex flex-col items-center justify-center space-y-3 relative overflow-hidden">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">ป้ายคิวอาร์ตั้งโต๊ะหน้าร้าน</span>
+                  
+                  {/* เจน QR จริงด้วย api.qrserver.com */}
+                  <div className="p-3 bg-white rounded-xl shadow-md border border-slate-200/50">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&color=059669&data=${encodeURIComponent(selectedQuest.qr_code_trigger)}`} 
+                      alt="Shopfront Generated QR Code" 
+                      className="w-36 h-36"
+                    />
+                  </div>
+                  
+                  <span className="text-[10px] font-mono bg-white dark:bg-slate-900 px-3 py-1 rounded border dark:border-slate-800 text-slate-500 dark:text-slate-455 font-semibold">
+                    {selectedQuest.qr_code_trigger}
+                  </span>
+                </div>
 
-              <button 
-                type="submit" 
-                disabled={isCheckingIn}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-              >
-                {isCheckingIn ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <CheckCircle2 size={16} />
-                )}
-                ยืนยันการเช็กอินภารกิจ
-              </button>
-            </form>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowQrModal(false);
+                      setQrCodeInput("");
+                    }}
+                    className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold rounded-xl transition-all"
+                  >
+                    ปิดหน้าต่าง
+                  </button>
+                  <button 
+                    onClick={() => startSimulatedScanner(selectedQuest.qr_code_trigger)}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-500/10 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <QrCode size={14} />
+                    จำลองมือถือสแกนคิวอาร์ 📸
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isScanningSimulated && !isVerifyingPhoto && (
+              // โหมดที่ 2: จำลองกล้องสแกนคิวอาร์ของนักท่องเที่ยว
+              <div className="space-y-4">
+                <div className="relative w-full h-56 rounded-2xl bg-black overflow-hidden flex flex-col items-center justify-center border border-slate-800">
+                  
+                  {/* Flashing RED record indicator */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10 bg-black/60 px-2 py-0.5 rounded-full border border-white/10">
+                    <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                    <span className="text-[8px] font-mono font-bold text-white">CAMERA LIVE</span>
+                  </div>
+
+                  {scanSuccess ? (
+                    // หน้าจอแสกนสำเร็จ
+                    <div className="flex flex-col items-center justify-center text-center space-y-2 z-10">
+                      <CheckCircle2 className="w-16 h-16 text-emerald-400 animate-bounce" />
+                      <p className="text-sm font-black text-white">ตรวจพบคิวอาร์โค้ดแล้ว!</p>
+                      <p className="text-[10px] text-emerald-350">กำลังดำเนินการตรวจอัปโหลดไฟล์หลักฐาน...</p>
+                    </div>
+                  ) : (
+                    // หน้าจอกำลังแสกน
+                    <div className="w-full h-full relative flex flex-col items-center justify-center text-center space-y-2">
+                      {/* Laser Line */}
+                      <div className="laser-line" />
+                      
+                      {/* Viewfinder brackets */}
+                      <div className="absolute top-8 left-8 w-6 h-6 border-t-2 border-l-2 border-white/40" />
+                      <div className="absolute top-8 right-8 w-6 h-6 border-t-2 border-r-2 border-white/40" />
+                      <div className="absolute bottom-8 left-8 w-6 h-6 border-b-2 border-l-2 border-white/40" />
+                      <div className="absolute bottom-8 right-8 w-6 h-6 border-b-2 border-r-2 border-white/40" />
+
+                      <QrCode className="w-14 h-14 text-white/20 animate-pulse" />
+                      <p className="text-xs text-white font-mono animate-pulse">เล็งกล้องไปที่คิวอาร์โค้ดหน้าร้าน...</p>
+                    </div>
+                  )}
+
+                  {/* ลำแสงแอร่าความลึกสีเขียว */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/20 via-transparent to-transparent pointer-events-none" />
+                </div>
+
+                <div className="text-center">
+                  <span className="text-[10px] text-slate-400 font-mono italic">
+                    {scanSuccess ? "✅ วิเคราะห์รหัสผ่านเสร็จสิ้น" : "⏳ กำลังจับคู่ตำแหน่ง GPS และยืนยันรหัสประจำเขต"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {isVerifyingPhoto && (
+              // โหมดที่ 3: จำลองการอัปโหลดและวิเคราะห์รูปภาพด้วย AI
+              <div className="space-y-5">
+                <div className="relative w-full h-44 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center p-4">
+                  {/* แสดงรูปภาพหลักฐาน มีเส้นสแกนสีฟ้าลอยผ่าน */}
+                  <img
+                    src="/CAMP.jpg"
+                    alt="หลักฐานภาพถ่ายกิจกรรม"
+                    className="w-full h-full object-cover rounded-xl opacity-60 filter saturate-50"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent pointer-events-none" />
+                  
+                  {/* เส้นเล็งแสกนสีฟ้าของ AI */}
+                  <style>{`
+                    @keyframes ai-laser {
+                      0% { top: 10%; }
+                      50% { top: 90%; }
+                      100% { top: 10%; }
+                    }
+                    .ai-laser-line {
+                      position: absolute;
+                      left: 10%;
+                      right: 10%;
+                      height: 2px;
+                      background-color: #06b6d4;
+                      box-shadow: 0 0 8px #06b6d4, 0 0 12px #06b6d4;
+                      animation: ai-laser 1.6s infinite ease-in-out;
+                    }
+                  `}</style>
+                  <div className="ai-laser-line" />
+
+                  {/* ป้ายสแกนวัตถุแบบ HUD */}
+                  <div className="absolute top-3 right-3 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30 text-[9px] font-mono text-cyan-300 flex items-center gap-1 z-10">
+                    <Loader2 size={10} className="animate-spin" />
+                    <span>AI ANALYZING...</span>
+                  </div>
+                </div>
+
+                {/* แสดงความคืบหน้าการวิเคราะห์ภาพ */}
+                <div className="space-y-3.5 bg-slate-50 dark:bg-slate-950/30 p-4 rounded-2xl border dark:border-slate-850">
+                  <span className="text-[10px] font-bold text-slate-450 uppercase block mb-1">ความคืบหน้าการวิเคราะห์</span>
+                  
+                  <div className="space-y-2 text-xs text-slate-700 dark:text-slate-350">
+                    <div className="flex items-center gap-2">
+                      {verifyStep >= 1 ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-slate-300 animate-pulse animate-spin" />
+                      )}
+                      <span className={verifyStep === 1 ? "font-bold text-slate-900 dark:text-white" : "text-slate-500"}>
+                        📤 อัปโหลดรูปภาพหลักฐาน {verifyStep === 1 ? "(กำลังส่ง...)" : ""}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {verifyStep >= 2 ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-slate-300 animate-pulse" />
+                      )}
+                      <span className={verifyStep === 2 ? "font-bold text-slate-900 dark:text-white text-cyan-600" : "text-slate-500"}>
+                        🧠 ตรวจสอบวัตถุด้วย AI {verifyStep === 2 ? "(กำลังวิเคราะห์...)" : ""}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {verifyStep >= 3 ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-slate-300 animate-pulse" />
+                      )}
+                      <span className={verifyStep === 3 ? "font-bold text-slate-900 dark:text-white" : "text-slate-500"}>
+                        📍 ยืนยันตำแหน่งร้านและ GPS {verifyStep === 3 ? "(กำลังตรวจคู่...)" : ""}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center text-[10px] text-slate-400 font-mono italic animate-pulse">
+                  {verifyStep === 2 ? "พบวัตถุ: แก้วเครื่องดื่ม, ทุ่งนา, และสายฝน..." : verifyStep === 1 ? "กำลังอัปโหลดรูปภาพไปยัง CDN ดิจิทัล..." : "ตรวจสอบพิกัดความปลอดภัย GPS สำเร็จ!"}
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
@@ -796,6 +1266,163 @@ export default function AdvancedTouristQuestsPage() {
         </div>
       )}
 
+      {/* 🎫 Voucher Ticket Modal (ลูกเล่นการแลกเหรียญและเคลมสิทธิ์ตั๋วเดินทาง) */}
+      {showRedeemModal && selectedReward && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-fade-in">
+          {/* แสงวิบวับข้างหลังตั๋ว */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* ดีไซน์โครงสร้าง Ticket ดึงดูดสายตา */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-sm p-6 shadow-2xl space-y-6 text-white text-center relative overflow-hidden">
+            
+            {/* โบว์และพลุด้านหลัง */}
+            <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+            
+            {/* รอยเจาะตั๋วขอบข้างจำลองความเสมือนจริงของบัตรกำนัล */}
+            <div className="absolute top-1/2 -left-3 w-6 h-6 bg-slate-950 rounded-full border border-slate-800 border-r-transparent" />
+            <div className="absolute top-1/2 -right-3 w-6 h-6 bg-slate-950 rounded-full border border-slate-800 border-l-transparent" />
+
+            <div className="space-y-1">
+              <span className="text-[10px] text-emerald-450 font-extrabold tracking-widest uppercase flex items-center justify-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-amber-400 animate-spin" /> NAN COIN PREMIUM VOUCHER
+              </span>
+              <h3 className="font-black text-lg leading-tight bg-gradient-to-r from-amber-200 via-amber-400 to-amber-200 bg-clip-text text-transparent">
+                คูปองสิทธิ์ของคุณเปิดใช้งานแล้ว!
+              </h3>
+            </div>
+
+            {/* ส่วนตัวตั๋วหลัก */}
+            <div className="bg-slate-950/85 border border-slate-800/80 rounded-2xl p-5 space-y-4 shadow-inner">
+              <div className="space-y-1">
+                <span className="text-[9px] bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full font-bold border border-amber-550/30">
+                  {selectedReward.badge}
+                </span>
+                <p className="font-bold text-sm text-white pt-1">{selectedReward.title}</p>
+                <p className="text-[10px] text-slate-400 font-light leading-relaxed">
+                  {selectedReward.description}
+                </p>
+              </div>
+
+              {/* Barcode จำลองทำจาก CSS เส้นตั้งขีดขวางแบบเก๋ๆ */}
+              <div className="bg-white p-3.5 rounded-xl space-y-1 border border-slate-850 flex flex-col items-center">
+                <div className="w-full flex items-center justify-center gap-[2.5px] h-12 overflow-hidden opacity-90">
+                  {[2,4,1,3,1,4,2,1,3,2,4,1,2,3,1,4,2,3,1,2,4,2,1,3,2,1,4,3,1,2,3].map((w, i) => (
+                    <div
+                      key={i}
+                      className="bg-slate-900 h-full rounded-sm"
+                      style={{ width: `${w}px` }}
+                    />
+                  ))}
+                </div>
+                <span className="text-[11px] font-mono tracking-[4px] text-slate-800 font-bold">{voucherCode}</span>
+              </div>
+
+              {/* เวลานับถอยหลัง */}
+              <div className="space-y-1 border-t border-slate-850 pt-3">
+                <span className="text-[9px] text-slate-500 block uppercase">รหัสคูปองนี้จะหมดอายุภายใน</span>
+                <p className="text-xl font-black font-mono text-emerald-400 tracking-wider flex items-center justify-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  {formatTimer(voucherTimer)}
+                </p>
+              </div>
+            </div>
+
+            {/* คำเตือนในการใช้งาน */}
+            <p className="text-[10px] text-slate-400 leading-relaxed bg-slate-950/40 p-2.5 rounded-lg border border-slate-850">
+              💡 <strong>คำแนะนำ:</strong> แสดงหน้าจอนี้กับพนักงานประจำร้านค้าพันธมิตร เพื่อกดยืนยันการหักเหรียญรางวัลสะสมต่อหน้าพนักงานเน้อจ้าว
+            </p>
+
+            {/* ปุ่มยืนยันแลกแต้ม (หน้าร้านกดยืนยัน) */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowRedeemModal(false);
+                  setSelectedReward(null);
+                }}
+                className="flex-1 py-3 border border-slate-800 hover:bg-slate-850 text-slate-400 rounded-xl text-xs font-bold transition-all"
+              >
+                ปิดหน้าต่าง
+              </button>
+              <button
+                onClick={handleConfirmRedeem}
+                disabled={isRedeeming}
+                className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-500/10 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {isRedeeming ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <>ยืนยันสิทธิ์ ณ หน้าร้าน</>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Floating Weather Change Notification */}
+      {weatherToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 dark:bg-slate-800/95 border border-slate-750 dark:border-slate-700 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-2 max-w-sm animate-bounce text-xs font-semibold backdrop-blur text-center">
+          <span>{weatherToast}</span>
+        </div>
+      )}
+
+      </div>
+
+      {/* 🧭 Footer */}
+      <footer className="w-full bg-slate-900 text-slate-400 py-12 border-t border-slate-800 relative z-20 text-xs transition-colors duration-300">
+        <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-left md:text-left">
+
+          {/* ส่วนที่ 1: ข้อมูลโปรเจกต์และการประกวด */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-white tracking-wider uppercase">Nan Local Verse Engine</h4>
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              ระบบวิศวกรรมซอฟต์แวร์แพลตฟอร์มเพื่อการท่องเที่ยวและยกระดับชุมชนน่าน
+              พัฒนาขึ้นเป็นพิเศษเพื่อการแข่งขัน <span className="text-amber-400 font-medium">Nan Beyond Seasons Hackathon</span>
+            </p>
+            <div className="text-[10px] text-slate-500 pt-2">
+              © 2569 คณะวิทยาศาสตร์และเทคโนโลยีการเกษตร • All Rights Reserved
+            </div>
+          </div>
+
+          {/* ส่วนที่ 2: ข้อมูลสถาบันการศึกษา */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-white tracking-wider uppercase">Affiliation</h4>
+            <p className="text-slate-300 font-medium">มหาวิทยาลัยเทคโนโลยีราชมงคลล้านนา น่าน</p>
+            <p className="text-slate-400 text-[11px] leading-relaxed">
+              Rajamangala University of Technology Lanna Nan<br />
+              สาขาวิทยาการคอมพิวเตอร์ (Computer Science)
+            </p>
+          </div>
+
+          {/* ส่วนที่ 3: ข้อมูลผู้พัฒนา (Solo Developer) */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-amber-400 tracking-wider uppercase flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+              Solo Developer
+            </h4>
+            <p className="text-slate-200 font-medium text-[13px]">พิชยะ สารเถื่อนแก้ว (HKM TEAM)</p>
+
+            {/* Contact Items */}
+            <div className="space-y-1.5 pt-1 text-slate-400 text-[11px]">
+              <div className="flex items-center gap-2 hover:text-white transition-colors">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L22 8m-9 11h3a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <a href="mailto:pichayasanthuenkaew@gmail.com" className="hover:underline">pichayasanthuenkaew@gmail.com</a>
+              </div>
+
+              <div className="flex items-center gap-2 hover:text-white transition-colors">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <a href="tel:0623894070" className="hover:underline">062-389-4070</a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </footer>
     </div>
   );
 }

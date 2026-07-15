@@ -113,11 +113,7 @@ export default function QuestsLayout({
                 <main className="flex-1 w-full">
                     {children}
                 </main>
-
-                <footer className="py-4 text-center text-[10px] border-t bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-950 dark:border-slate-900 dark:text-slate-600">
-                    © 2026 Nan Beyond Seasons Hackathon • Powered by HACK RMUTL Engine
-                </footer>
-            </div>
+             </div>
         </div>
     );
 }
