@@ -100,7 +100,7 @@ export default function DashboardLayout({
             </button>
           </div>
           <div className="text-[10px] text-center text-muted-text font-mono">
-            One-Man Army v1.0.0
+            One-Man Army {process.env.NEXT_PUBLIC_APP_VERSION || 'v1.0.0'}
           </div>
         </div>
       </aside>

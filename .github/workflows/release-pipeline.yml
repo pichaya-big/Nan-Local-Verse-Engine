@@ -48,6 +48,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder-project.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-anon-key
           NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_APP_VERSION: ${{ github.ref_name }}
         run: npm run build
 
   # ----------------------------------------------------
@@ -120,6 +121,8 @@ jobs:
           context: ./client
           file: ./client/Dockerfile
           push: true
+          build-args: |
+            NEXT_PUBLIC_APP_VERSION=${{ env.TAG_NAME }}
           tags: |
             ghcr.io/${{ env.REPO_LOWER }}-client:${{ env.TAG_NAME }}
             ghcr.io/${{ env.REPO_LOWER }}-client:latest
