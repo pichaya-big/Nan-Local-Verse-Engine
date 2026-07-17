@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Copy, Check, Share2, ArrowLeft, Image as ImageIcon, Loader2, Smartphone, Coins } from 'lucide-react';
+import { Sparkles, Copy, Check, Share2, ArrowLeft, Image as ImageIcon, Loader2, Smartphone } from 'lucide-react';
+import NextImage from 'next/image';
 import { supabase } from '../../../../lib/supabaseClient';
 
 const normalizeDistrict = (dist: string | null | undefined): string => {
@@ -420,9 +421,11 @@ export default function GeneratorPage() {
 
                     {/* แสดงรูปภาพแคมเปญ */}
                     <div className="relative w-full overflow-hidden rounded-xl border border-card-border bg-slate-100 dark:bg-slate-900/20">
-                      <img
+                      <NextImage
                         src="/CAMP.jpg"
                         alt="ภาพแคมเปญ"
+                        width={600}
+                        height={350}
                         className="w-full h-auto object-cover max-h-[350px] rounded-xl hover:scale-[1.01] transition-transform duration-300"
                       />
                     </div>
@@ -487,9 +490,11 @@ export default function GeneratorPage() {
                         
                         {/* รูปภาพแคมเปญ */}
                         <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-900">
-                          <img
+                          <NextImage
                             src="/CAMP.jpg"
                             alt="Campaign Poster"
+                            width={320}
+                            height={128}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute bottom-2 left-2 bg-emerald-600/90 text-white font-mono font-bold text-[9px] px-2 py-0.5 rounded">

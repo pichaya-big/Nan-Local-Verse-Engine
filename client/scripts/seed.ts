@@ -61,7 +61,7 @@ async function main() {
     await supabase.from('quests').delete().neq('id', 0);
     await supabase.from('campaigns').delete().neq('id', 0);
     await supabase.from('stores').delete().neq('id', 0);
-  } catch (e) {
+  } catch {
     console.log('⚠️ กำลังพยายามจัดโครงสร้างตารางใหม่ลงสู่ฐานข้อมูล...');
   }
 

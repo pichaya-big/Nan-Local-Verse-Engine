@@ -32,12 +32,6 @@ const normalizeDistrict = (dist: string | null | undefined): string => {
 export default function DashboardPage() {
     const { theme, setTheme } = useTheme();
 
-    // ยืนยันการเรนเดอร์ฝั่งไคลเอนต์สำเร็จ (Prevent Hydration Mismatch)
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
     // States สำหรับข้อมูลร้านค้าและ Dashboard
     const [shopName, setShopName] = useState("กำลังโหลดข้อมูลร้านค้า...");
     const [district, setDistrict] = useState("ปัว");
@@ -146,7 +140,6 @@ export default function DashboardPage() {
                     .limit(5);
 
                 const formattedQuests = [];
-                let totalParticipants = 0;
                 if (quests) {
                     for (const quest of quests) {
                         // นับจำนวนผู้รับสิทธิ์คูปองผ่านเควสนี้ในตาราง user_coupons
@@ -161,7 +154,6 @@ export default function DashboardPage() {
                             participants: count || 0,
                             status: 'กำลังดำเนินการ'
                         });
-                        totalParticipants += (count || 0);
                     }
                 }
                 setActiveQuests(formattedQuests);

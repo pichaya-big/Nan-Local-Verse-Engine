@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Compass, Lock, User, ArrowRight, Sparkles, MessageCircle, Globe, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { supabase } from "../../../lib/supabaseClient";
 
 export default function LoginPage() {
     const router = useRouter();

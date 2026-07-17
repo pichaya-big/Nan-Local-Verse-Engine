@@ -44,6 +44,7 @@ function RegisterForm() {
                 alert(result.error || "เกิดข้อผิดพลาดในการสมัครสมาชิก");
             }
         } catch (error) {
+            console.error("Register connection error:", error);
             alert("ไม่สามารถเชื่อมต่อกับระบบได้");
         } finally {
             setLoading(false);

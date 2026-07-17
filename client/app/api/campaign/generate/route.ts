@@ -1,5 +1,4 @@
 // app/api/campaign/generate/route.ts
-import { NextResponse } from 'next/server';
 
 // app/api/campaign/generate/route.ts
 export async function POST(request: Request) {

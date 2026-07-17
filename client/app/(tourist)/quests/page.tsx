@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { 
   Compass, 
   MapPin, 
@@ -14,18 +14,15 @@ import {
   Loader2,
   X,
   Award,
-  ArrowRight,
   BookOpen,
   Store,
   Sparkles,
   Zap,
-  TreePine,
-  UtensilsCrossed,
   Gift,
   Bell,
-  AlertCircle,
-  Calendar
+  AlertCircle
 } from "lucide-react";
+import Image from "next/image";
 import { supabase } from "../../../lib/supabaseClient";
 
 const RANDOM_IDEAS = [
@@ -219,13 +216,17 @@ export default function AdvancedTouristQuestsPage() {
   const [selectedTab, setSelectedTab] = useState<string>("All");
 
   // ดึงข้อมูล Leaderboard/Ranking สะสมเหรียญ
-  const fetchLeaderboardData = async (currentUserId: string | null, currentUserScore: number) => {
+  const fetchLeaderboardData = useCallback(async (currentUserId: string | null, currentUserScore: number) => {
     setIsLeaderboardLoading(true);
     try {
       // 1. ดึงผู้ใช้งานทั้งหมด
       const { data: dbUsers, error: userError } = await supabase
         .from("users")
         .select("id, name, email, role");
+
+      if (userError) {
+        console.error("fetchLeaderboardData - userError:", userError);
+      }
 
       // แปลงข้อมูลเป็น Array เพื่อรองรับการทำงานในทั้งโหมดจำลอง (Mock Demo) และฐานข้อมูลจริง (Real DB)
       let usersArray: any[] = [];
@@ -240,10 +241,18 @@ export default function AdvancedTouristQuestsPage() {
         .from("user_coupons")
         .select("user_id, quest_id");
 
+      if (couponError) {
+        console.error("fetchLeaderboardData - couponError:", couponError);
+      }
+
       // 3. ดึงแต้มภารกิจทั้งหมด
       const { data: dbQuests, error: questError } = await supabase
         .from("quests")
         .select("id, points");
+
+      if (questError) {
+        console.error("fetchLeaderboardData - questError:", questError);
+      }
 
       // สร้าง Map หาคะแนนแต่ละเควส
       const questPointsMap = new Map<number, number>();
@@ -258,10 +267,10 @@ export default function AdvancedTouristQuestsPage() {
         userPointsMap.set(c.user_id, (userPointsMap.get(c.user_id) || 0) + pts);
       });
 
-      let realTourists = usersArray
+      const realTourists = usersArray
         .filter((u: any) => u.role === "tourist" || !u.role)
         .map((u: any) => {
-          let score = userPointsMap.get(u.id) || 0;
+          const score = userPointsMap.get(u.id) || 0;
           return {
             id: u.id,
             name: u.name || u.email?.split("@")[0] || "นักท่องเที่ยวไร้นาม",
@@ -281,7 +290,7 @@ export default function AdvancedTouristQuestsPage() {
       ];
 
       // รวมรายชื่อจริงกับ mock
-      let combined = [...realTourists];
+      const combined = [...realTourists];
       
       const currentInList = combined.find(u => u.id === currentUserId);
       if (!currentInList && currentUserId) {
@@ -324,10 +333,10 @@ export default function AdvancedTouristQuestsPage() {
     } finally {
       setIsLeaderboardLoading(false);
     }
-  };
+  }, []);
 
   // ดึงข้อมูลนักท่องเที่ยว เลเวล เหรียญ และเควสจาก Supabase
-  const fetchTouristData = async () => {
+  const fetchTouristData = useCallback(async () => {
     try {
       // 1. ดึงผู้ใช้งานปัจจุบัน
       const { data: { user } } = await supabase.auth.getUser();
@@ -389,11 +398,11 @@ export default function AdvancedTouristQuestsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchLeaderboardData]);
 
   useEffect(() => {
     fetchTouristData();
-  }, []);
+  }, [fetchTouristData]);
 
   // ฟังก์ชันคำนวณข้อมูลระดับเลเวลนักท่องเที่ยวแบบไดนามิกจากแต้มสะสม
   const getLevelInfo = (points: number) => {
@@ -480,6 +489,7 @@ export default function AdvancedTouristQuestsPage() {
   };
 
   const startSimulatedScanner = (triggerCode: string) => {
+    console.log("Simulating scan for trigger code:", triggerCode);
     setIsScanningSimulated(true);
     setScanSuccess(false);
     
@@ -812,7 +822,7 @@ export default function AdvancedTouristQuestsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {quests.length > 0 ? (
                     (() => {
-                      let filtered = quests.filter((quest) => {
+                      const filtered = quests.filter((quest) => {
                         // Weather Filter
                         const questWeather = getQuestWeatherTrigger(quest);
                         if (questWeather === "Rainy" && simulatedWeather !== "Rainy") return false;
@@ -1404,9 +1414,11 @@ export default function AdvancedTouristQuestsPage() {
             {isVerifyingPhoto && (
               <div className="space-y-5">
                 <div className="relative w-full h-44 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center p-4">
-                  <img
+                  <Image
                     src="/CAMP.jpg"
                     alt="หลักฐานถ่ายภาพโดยกล้องสแกน"
+                    width={400}
+                    height={176}
                     className="w-full h-full object-cover rounded-xl opacity-60 filter saturate-50"
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/20 to-transparent pointer-events-none" />

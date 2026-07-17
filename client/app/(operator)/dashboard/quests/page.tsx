@@ -16,7 +16,6 @@ const normalizeDistrict = (dist: string | null | undefined): string => {
 };
 
 export default function QuestsPage() {
-  const [storeId, setStoreId] = useState<number | null>(null);
   const [storeDistrict, setStoreDistrict] = useState("ปัว");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -57,7 +56,6 @@ export default function QuestsPage() {
         setIsLoading(false);
         return;
       }
-      setStoreId(profile.associated_store_id);
 
       const { data: store } = await supabase
         .from('stores')

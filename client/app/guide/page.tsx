@@ -4,20 +4,15 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
-  BookOpen,
   ArrowLeft,
   ArrowRight,
   Coins,
-  Gift,
   Compass,
   Store,
   HelpCircle,
-  CloudRain,
-  MapPin,
   CheckCircle2,
   ChevronRight,
   Calculator,
-  Laptop,
   Smile
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
